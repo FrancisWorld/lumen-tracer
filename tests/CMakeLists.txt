@@ -9,7 +9,9 @@ set(LUMEN_SUITES
     rng
     sampling
     ggx
-    bvh)
+    bvh
+    deflate
+    png)
 foreach(suite IN LISTS LUMEN_SUITES)
   add_test(NAME ${suite} COMMAND lumen_tests --suite ${suite})
 endforeach()
