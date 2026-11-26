@@ -5,6 +5,9 @@
 using namespace lumen;
 
 namespace {
+/// Parses a JSON string literal and returns an owned copy (as_string() would dangle on a temporary).
+std::string str(std::string_view text) { return parse_json(text).as_string(); }
+
 std::string error_of(std::string_view text) {
     try {
         (void)parse_json(text);
@@ -32,10 +35,10 @@ TEST_CASE(json, parses_all_value_kinds) {
 }
 
 TEST_CASE(json, handles_unicode_escapes) {
-    CHECK_EQ(parse_json(R"("\u00e9")").as_string(), std::string("\xc3\xa9"));
-    CHECK_EQ(parse_json(R"("\u20ac")").as_string(), std::string("\xe2\x82\xac"));
-    CHECK_EQ(parse_json(R"("\ud83d\ude00")").as_string(), std::string("\xf0\x9f\x98\x80"));  // surrogate pair
-    CHECK_EQ(parse_json(R"("a\/b\\c\"")").as_string(), std::string("a/b\\c\""));
+    CHECK_EQ(str(R"("\u00e9")"), std::string("\xc3\xa9"));
+    CHECK_EQ(str(R"("\u20ac")"), std::string("\xe2\x82\xac"));
+    CHECK_EQ(str(R"("\ud83d\ude00")"), std::string("\xf0\x9f\x98\x80"));  // surrogate pair
+    CHECK_EQ(str(R"("a\/b\\c\"")"), std::string("a/b\\c\""));
 }
 
 TEST_CASE(json, reports_line_and_column) {

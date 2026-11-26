@@ -1,0 +1,79 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (clang, warnings as errors, scene validation)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ninja
+        run: brew install ninja
+      - name: Configure with -Werror
+        run: cmake --preset ci
+      - name: Build
+        run: cmake --build --preset ci -j 3
+      - name: Validate every shipped scene
+        run: |
+          for scene in scenes/*.json; do
+            ./build/ci/lumen info "$scene"
+          done
+      - name: Check generated assets are reproducible
+        run: |
+          ./build/ci/lumen-assets "$RUNNER_TEMP/assets"
+          diff -r assets "$RUNNER_TEMP/assets"
+
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            compiler: g++-14
+          - os: macos-latest
+            compiler: apple-clang
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++-14
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Configure
+        run: |
+          if [ "${{ matrix.compiler }}" = "g++-14" ]; then export CXX=g++-14; fi
+          cmake --preset release
+      - name: Build
+        run: cmake --build --preset release -j 3
+      - name: Test
+        run: ctest --preset release
+
+  sanitizers:
+    name: asan + ubsan
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ninja
+        run: brew install ninja
+      - name: Configure
+        run: cmake --preset asan
+      - name: Build
+        run: cmake --build --preset asan -j 3
+      - name: Test
+        run: ctest --preset asan

@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(LUMEN_WERROR "Treat warnings as errors" OFF)
 option(LUMEN_NATIVE "Tune for the build machine (-march=native); binaries are not portable" OFF)
+option(LUMEN_COVERAGE "Instrument for llvm-cov source coverage" OFF)
 set(LUMEN_SANITIZE "" CACHE STRING "Comma separated sanitizers, e.g. address,undefined or thread")
 
 find_package(Threads REQUIRED)
@@ -19,6 +20,10 @@ if(LUMEN_WERROR)
 endif()
 if(LUMEN_NATIVE)
   target_compile_options(lumen_options INTERFACE -march=native)
+endif()
+if(LUMEN_COVERAGE)
+  target_compile_options(lumen_options INTERFACE -fprofile-instr-generate -fcoverage-mapping)
+  target_link_options(lumen_options INTERFACE -fprofile-instr-generate)
 endif()
 if(LUMEN_SANITIZE)
   target_compile_options(lumen_options INTERFACE -fsanitize=${LUMEN_SANITIZE} -fno-omit-frame-pointer
