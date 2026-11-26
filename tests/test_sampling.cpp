@@ -1,30 +1,12 @@
-#include <functional>
-
 #include "lumen/microfacet.hpp"
 #include "lumen/rng.hpp"
 #include "lumen/sampling.hpp"
+#include "support.hpp"
 #include "testing.hpp"
 
 using namespace lumen;
+using lumen::testing::integrate_sphere;
 
-namespace {
-
-/// Midpoint quadrature of f over the whole unit sphere in solid-angle measure.
-double integrate_sphere(const std::function<double(const Vec3&)>& f, int n_theta = 400, int n_phi = 800) {
-    double sum = 0;
-    for (int i = 0; i < n_theta; ++i) {
-        const double theta = (i + 0.5) / n_theta * std::numbers::pi;
-        for (int j = 0; j < n_phi; ++j) {
-            const double phi = (j + 0.5) / n_phi * 2.0 * std::numbers::pi;
-            const Vec3 w(static_cast<Real>(std::sin(theta) * std::cos(phi)),
-                         static_cast<Real>(std::sin(theta) * std::sin(phi)), static_cast<Real>(std::cos(theta)));
-            sum += f(w) * std::sin(theta);
-        }
-    }
-    return sum * (std::numbers::pi / n_theta) * (2.0 * std::numbers::pi / n_phi);
-}
-
-}  // namespace
 
 TEST_CASE(sampling, concentric_disk_stays_in_unit_disk_and_is_area_uniform) {
     Pcg32 rng(1);

@@ -13,7 +13,10 @@ set(LUMEN_SUITES
     deflate
     png
     json
-    obj)
+    obj
+    bsdf
+    camera
+    texture)
 foreach(suite IN LISTS LUMEN_SUITES)
   add_test(NAME ${suite} COMMAND lumen_tests --suite ${suite})
 endforeach()
