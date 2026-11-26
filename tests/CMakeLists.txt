@@ -16,7 +16,16 @@ set(LUMEN_SUITES
     obj
     bsdf
     camera
-    texture)
+    texture
+    scene
+    light
+    furnace
+    direct
+    path
+    scheduler
+    render
+    denoise
+    tonemap)
 foreach(suite IN LISTS LUMEN_SUITES)
   add_test(NAME ${suite} COMMAND lumen_tests --suite ${suite})
 endforeach()
