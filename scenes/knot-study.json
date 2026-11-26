@@ -1,0 +1,24 @@
+{
+  "settings": { "width": 640, "height": 360, "samples": 256, "max_depth": 12, "seed": 3, "exposure": 1.1, "denoise": true, "sample_clamp": 15 },
+  "camera": { "from": [4.6, 3.2, 7.4], "at": [0, 1.2, 0], "up": [0, 1, 0], "fov": 32, "aperture": 0.05, "focus_distance": 9.4 },
+  "environment": { "type": "gradient", "horizon": [0.62, 0.74, 0.88], "zenith": [0.22, 0.38, 0.72], "ground": [0.3, 0.3, 0.3], "intensity": 0.7 },
+  "textures": {
+    "mosaic": { "type": "image", "path": "../assets/textures/mosaic.png", "repeat": [1, 1] },
+    "lawn": { "type": "checker", "a": [0.2, 0.36, 0.14], "b": [0.15, 0.29, 0.11], "scale": 70 }
+  },
+  "materials": {
+    "lawn": { "base_color": "lawn", "roughness": 1, "specular": 0 },
+    "glazed": { "base_color": "mosaic", "roughness": 0.18, "specular": 0.9 },
+    "stone": { "base_color": [0.55, 0.5, 0.45], "roughness": 0.9, "specular": 0.2 },
+    "glass": { "type": "dielectric", "ior": 1.45, "tint": [0.95, 1, 0.98] },
+    "sun": { "base_color": [1, 1, 1], "emission": [1, 0.88, 0.7], "emission_strength": 520 }
+  },
+  "objects": [
+    { "type": "quad", "corner": [-60, 0, -60], "u": [120, 0, 0], "v": [0, 0, 120], "material": "lawn" },
+    { "type": "mesh", "path": "../assets/models/knot.obj", "material": "glazed", "translate": [0, 1.95, 0], "rotate": [10, -25, 0], "scale": 0.52 },
+    { "type": "mesh", "path": "../assets/models/rock.obj", "material": "stone", "translate": [-2.9, 0.75, 1.3], "rotate": [0, 40, 0], "scale": 0.8 },
+    { "type": "mesh", "path": "../assets/models/rock.obj", "material": "stone", "translate": [3.1, 0.4, -1.8], "rotate": [0, 200, 0], "scale": 0.45 },
+    { "type": "sphere", "center": [2.0, 0.6, 2.4], "radius": 0.6, "material": "glass" },
+    { "type": "sphere", "center": [24, 15, -40], "radius": 4, "material": "sun" }
+  ]
+}

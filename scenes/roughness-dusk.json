@@ -1,0 +1,34 @@
+{
+  "settings": {"width": 640, "height": 360, "samples": 256, "max_depth": 8, "seed": 5, "exposure": 1.0, "denoise": true, "sample_clamp": 15},
+  "camera": {"from": [0, 1.1, 6.2], "at": [0, 0.6, -1.2], "up": [0, 1, 0], "fov": 34, "aperture": 0.12, "focus_distance": 7.4},
+  "environment": {"type": "gradient", "horizon": [0.95, 0.55, 0.38], "zenith": [0.1, 0.18, 0.42], "ground": [0.25, 0.15, 0.12], "intensity": 0.9},
+  "textures": {"checks": {"type": "checker", "a": [0.62, 0.6, 0.56], "b": [0.16, 0.17, 0.19], "scale": 60}},
+  "materials": {
+    "ground": {"base_color": "checks", "roughness": 0.7, "specular": 0.2},
+    "sun": {"base_color": [1, 1, 1], "emission": [1, 0.72, 0.42], "emission_strength": 300},
+    "glass": {"type": "dielectric", "ior": 1.5, "tint": [1, 0.98, 0.96]},
+    "ruby": {"type": "dielectric", "ior": 1.55, "tint": [1, 0.35, 0.4]},
+    "matte": {"base_color": [0.75, 0.75, 0.78], "roughness": 1, "specular": 0},
+    "metal0": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.04},
+    "metal1": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.133},
+    "metal2": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.27},
+    "metal3": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.43},
+    "metal4": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.607},
+    "metal5": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 0.797},
+    "metal6": {"base_color": [0.95, 0.64, 0.54], "metallic": 1, "roughness": 1.0}
+  },
+  "objects": [
+    {"type": "quad", "corner": [-60, 0, -60], "u": [120, 0, 0], "v": [0, 0, 120], "material": "ground"},
+    {"type": "sphere", "center": [-3.75, 0.55, -1.2], "radius": 0.55, "material": "metal0"},
+    {"type": "sphere", "center": [-2.5, 0.55, -1.2], "radius": 0.55, "material": "metal1"},
+    {"type": "sphere", "center": [-1.25, 0.55, -1.2], "radius": 0.55, "material": "metal2"},
+    {"type": "sphere", "center": [0.0, 0.55, -1.2], "radius": 0.55, "material": "metal3"},
+    {"type": "sphere", "center": [1.25, 0.55, -1.2], "radius": 0.55, "material": "metal4"},
+    {"type": "sphere", "center": [2.5, 0.55, -1.2], "radius": 0.55, "material": "metal5"},
+    {"type": "sphere", "center": [3.75, 0.55, -1.2], "radius": 0.55, "material": "metal6"},
+    {"type": "sphere", "center": [-0.9, 0.4, 1.5], "radius": 0.4, "material": "glass"},
+    {"type": "sphere", "center": [0.2, 0.3, 2.1], "radius": 0.3, "material": "ruby"},
+    {"type": "sphere", "center": [1.4, 0.35, 1.5], "radius": 0.35, "material": "matte"},
+    {"type": "sphere", "center": [-10, 5, -22], "radius": 2.2, "material": "sun"}
+  ]
+}
