@@ -11,7 +11,9 @@ set(LUMEN_SUITES
     ggx
     bvh
     deflate
-    png)
+    png
+    json
+    obj)
 foreach(suite IN LISTS LUMEN_SUITES)
   add_test(NAME ${suite} COMMAND lumen_tests --suite ${suite})
 endforeach()
