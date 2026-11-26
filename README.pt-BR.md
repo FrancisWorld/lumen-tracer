@@ -23,7 +23,7 @@ As três imagens são renderizadas por este repositório a partir das cenas em [
 | --- | --- |
 | ![roughness-dusk](docs/gallery/roughness-dusk.png) | ![knot-study](docs/gallery/knot-study.png) |
 
-A textura e as duas malhas são geradas por [`tools/gen_assets.cpp`](tools/gen_assets.cpp) (determinístico; o CI as regenera e compara com os arquivos versionados), então todo asset do repositório é original.
+A textura e as duas malhas são geradas por [`tools/gen_assets.cpp`](tools/gen_assets.cpp) (determinístico na máquina usada aqui; o CI só verifica que o gerador executa, porque diferenças no último dígito de `sin`/`cos` entre plataformas poderiam alterar os arquivos de texto), então todo asset do repositório é original.
 
 ## Por que existe / o que é difícil
 
@@ -153,7 +153,7 @@ Os objetos são `sphere`, `triangle`, `quad` e `mesh` (OBJ). As texturas são `c
 | Formatos | valores de referência de CRC/Adler, vetor zlib Huffman dinâmico, PNG feito por outro codificador usando todos os filtros, rejeição de entrada corrompida; posições de erro do JSON, casos extremos da RFC 8259; polígonos e índices negativos do OBJ |
 | CLI | versão, info, render, códigos de saída de erro |
 
-A cobertura de linhas medida de `src/lumen` é 93,8% (cobertura de regiões 94,5%) com `scripts/coverage.sh` (llvm-cov do Xcode). Verificado sem falhas nos presets `release`, `asan` (ASan + UBSan) e `tsan` com Apple clang 21 / macOS. O ASan pegou um bug real em um teste (referência a um temporário); já está corrigido.
+A cobertura de linhas medida de `src/lumen` é 93,8% (cobertura de regiões 94,5%) com `scripts/coverage.sh` (llvm-cov do Xcode). Verificado sem falhas no Apple clang 21 / macOS: a suíte completa em `release` e `asan` (ASan + UBSan), e as suítes de scheduler, render, denoiser e pipeline em `tsan`. O ASan pegou um bug real em um teste (referência a um temporário); já está corrigido.
 
 ## Limitações
 
