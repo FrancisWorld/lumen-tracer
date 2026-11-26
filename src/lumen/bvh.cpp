@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <numeric>
+#include <string>
+
+#include "lumen/error.hpp"
 
 namespace lumen {
 namespace {
@@ -135,6 +138,11 @@ Bvh Bvh::build(std::span<const Aabb> bounds, BuildOptions options) {
     options.bin_count = std::clamp<std::uint32_t>(options.bin_count, 2, 64);
     std::vector<PrimInfo> prims(bounds.size());
     for (std::size_t i = 0; i < bounds.size(); ++i) {
+        // Non-finite boxes would turn centroids into NaN and make the bin index conversion undefined.
+        if (!is_finite(bounds[i].lo) || !is_finite(bounds[i].hi) || bounds[i].empty() ||
+            !is_finite(bounds[i].hi - bounds[i].lo)) {
+            throw InputError("bvh: primitive " + std::to_string(i) + " has an empty or non-finite bounding box");
+        }
         prims[i] = {bounds[i], bounds[i].centroid(), static_cast<std::uint32_t>(i)};
     }
     bvh.nodes_.reserve(bounds.size() * 2);

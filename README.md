@@ -139,7 +139,7 @@ Objects are `sphere`, `triangle`, `quad` and `mesh` (OBJ). Textures are `constan
 
 ## Testing
 
-`ctest --preset release` runs 28 entries (23 suites plus 5 command-line checks); the suites hold 105 test cases.
+`ctest --preset release` runs 29 entries (24 suites plus 5 command-line checks); the suites hold 111 test cases.
 
 | Area | What is proven |
 | --- | --- |
@@ -151,9 +151,10 @@ Objects are `sphere`, `triangle`, `quad` and `mesh` (OBJ). Textures are `constan
 | Render | bit-identical across threads/tiles; work stealing; exception propagation; progress |
 | Denoiser | noise reduction, edge preservation, albedo preservation, thread independence, sky separation |
 | Formats | CRC/Adler reference values, zlib dynamic-Huffman vector, PNG made by another encoder using all filters, corrupt-input rejection; JSON error positions, RFC 8259 edge cases; OBJ polygons and negative indices |
+| Input hardening | numbers beyond 1e9 or non-finite geometry rejected with a JSON path; BVH refuses NaN/infinite boxes; a sparse 65 MiB scene file is refused before it is read; JSON strings reject overlong, surrogate, out-of-range and truncated UTF-8 |
 | CLI | version, info, render, error exit codes |
 
-Measured line coverage of `src/lumen` is 93.8% (region coverage 94.5%) with `scripts/coverage.sh` (llvm-cov from Xcode). Verified clean on Apple clang 21 / macOS: the full suite under `release` and `asan` (ASan + UBSan), and the scheduler, render, denoiser and pipeline suites under `tsan`. ASan caught a real bug in a test (a reference to a temporary); it is fixed.
+Measured line coverage of `src/lumen` is 93.9% (region coverage 94.7%) with `scripts/coverage.sh` (llvm-cov from Xcode). Verified clean on Apple clang 21 / macOS: the full suite under `release` and `asan` (ASan + UBSan), and the scheduler, render, denoiser and pipeline suites under `tsan`. ASan caught a real bug in a test (a reference to a temporary); it is fixed.
 
 ## Limitations
 
@@ -161,7 +162,7 @@ Measured line coverage of `src/lumen` is 93.8% (region coverage 94.5%) with `scr
 - Single-scattering GGX loses energy as roughness rises: a white metal at roughness 1 returns 0.31 in a furnace at normal incidence (measured in the test run). No multiple-scattering compensation.
 - No rough glass, volumes, subsurface, spectral rendering, motion blur, instancing, HDR environment maps, or sky importance sampling.
 - The denoiser has no variance estimate; its colour tolerance is a fixed parameter.
-- The Linux/gcc 14 CI job was written but not run locally (only Apple clang on macOS was available); the macOS jobs mirror what was run.
+- The Linux/gcc 14 CI job was written but not run (no g++ exists on the development machine and no gcc image was pulled). The code was only audited by reading for libc++-specific API use; libstdc++ 14 provides everything it relies on (`std::expected`, `std::from_chars`/`to_chars` for floating point, `std::span`, `std::bit_cast`), but expect to fix small portability issues if that job fails. The macOS jobs mirror what was run.
 
 ## License
 

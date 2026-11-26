@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "lumen/error.hpp"
+#include "lumen/fileio.hpp"
 
 namespace lumen {
 namespace {
@@ -161,11 +162,7 @@ ObjMesh parse_obj(std::string_view text) {
 }
 
 ObjMesh load_obj_file(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) {
-        throw InputError("obj: cannot open " + path);
-    }
-    const std::string text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    const std::string text = read_file_bounded(path, kMaxAssetBytes);
     try {
         return parse_obj(text);
     } catch (const InputError& e) {

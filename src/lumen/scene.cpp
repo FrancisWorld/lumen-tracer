@@ -18,6 +18,20 @@ Vec3 Environment::radiance(const Vec3& d) const {
     return lerp(horizon, ground, std::sqrt(clamp01(-d.y))) * intensity;
 }
 
+namespace {
+
+/// Largest coordinate accepted for geometry: the cross product of two edges, squared (as length() does), must
+/// still fit in a float, which holds up to roughly 1e9.
+constexpr Real kMaxCoordinate = Real(1e9);
+
+void require_bounded(const Vec3& p, const char* what) {
+    if (!(std::fabs(p.x) <= kMaxCoordinate && std::fabs(p.y) <= kMaxCoordinate && std::fabs(p.z) <= kMaxCoordinate)) {
+        throw InputError(std::string(what) + " is not finite or exceeds 1e9 in magnitude");
+    }
+}
+
+}  // namespace
+
 std::uint32_t Scene::add_texture(Texture texture) {
     textures_.push_back(std::move(texture));
     return static_cast<std::uint32_t>(textures_.size() - 1);
@@ -35,9 +49,10 @@ void Scene::add_sphere(const Sphere& sphere) {
     if (sphere.material >= materials_.size()) {
         throw InputError("sphere references a material that does not exist");
     }
-    if (!(sphere.radius > 0)) {
-        throw InputError("sphere radius must be positive");
+    if (!(sphere.radius > 0 && sphere.radius <= kMaxCoordinate)) {
+        throw InputError("sphere radius must be positive and at most 1e9");
     }
+    require_bounded(sphere.center, "sphere center");
     spheres_.push_back(sphere);
     prims_.push_back({PrimKind::Sphere, static_cast<std::uint32_t>(spheres_.size() - 1)});
 }
@@ -45,6 +60,12 @@ void Scene::add_sphere(const Sphere& sphere) {
 bool Scene::add_triangle(const Triangle& triangle) {
     if (triangle.material >= materials_.size()) {
         throw InputError("triangle references a material that does not exist");
+    }
+    for (const Vec3* p : {&triangle.p0, &triangle.p1, &triangle.p2}) {
+        require_bounded(*p, "triangle vertex");
+    }
+    if (!is_finite(triangle.n0) || !is_finite(triangle.n1) || !is_finite(triangle.n2)) {
+        throw InputError("triangle normal is not finite");
     }
     if (!(triangle.area() > 1e-12F)) {
         return false;
@@ -68,8 +89,10 @@ std::size_t Scene::add_mesh(const ObjMesh& mesh, const Transform& transform, std
         t.p0 = transform.point(v[0]->position);
         t.p1 = transform.point(v[1]->position);
         t.p2 = transform.point(v[2]->position);
-        const Real area = t.area();
-        if (!(area > 1e-12F)) {
+        require_bounded(t.p0, "mesh vertex");  // transformed positions must stay representable
+        require_bounded(t.p1, "mesh vertex");
+        require_bounded(t.p2, "mesh vertex");
+        if (!(t.area() > 1e-12F)) {
             continue;
         }
         const Vec3 face = t.face_normal();

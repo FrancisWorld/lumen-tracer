@@ -139,7 +139,7 @@ Os objetos são `sphere`, `triangle`, `quad` e `mesh` (OBJ). As texturas são `c
 
 ## Estratégia de testes
 
-`ctest --preset release` executa 28 entradas (23 suítes mais 5 verificações de linha de comando); as suítes têm 105 casos de teste.
+`ctest --preset release` executa 29 entradas (24 suítes mais 5 verificações de linha de comando); as suítes têm 111 casos de teste.
 
 | Área | O que é provado |
 | --- | --- |
@@ -151,9 +151,10 @@ Os objetos são `sphere`, `triangle`, `quad` e `mesh` (OBJ). As texturas são `c
 | Render | idêntico bit a bit entre threads/tiles; work stealing; propagação de exceção; progresso |
 | Denoiser | redução de ruído, preservação de bordas, preservação de albedo, independência de threads, separação do céu |
 | Formatos | valores de referência de CRC/Adler, vetor zlib Huffman dinâmico, PNG feito por outro codificador usando todos os filtros, rejeição de entrada corrompida; posições de erro do JSON, casos extremos da RFC 8259; polígonos e índices negativos do OBJ |
+| Robustez de entrada | números acima de 1e9 ou geometria não finita rejeitados com o caminho no JSON; a BVH recusa caixas NaN/infinitas; um arquivo de cena esparso de 65 MiB é recusado antes de ser lido; strings JSON rejeitam UTF-8 sobreposto, substitutos, fora do intervalo e truncado |
 | CLI | versão, info, render, códigos de saída de erro |
 
-A cobertura de linhas medida de `src/lumen` é 93,8% (cobertura de regiões 94,5%) com `scripts/coverage.sh` (llvm-cov do Xcode). Verificado sem falhas no Apple clang 21 / macOS: a suíte completa em `release` e `asan` (ASan + UBSan), e as suítes de scheduler, render, denoiser e pipeline em `tsan`. O ASan pegou um bug real em um teste (referência a um temporário); já está corrigido.
+A cobertura de linhas medida de `src/lumen` é 93,9% (cobertura de regiões 94,7%) com `scripts/coverage.sh` (llvm-cov do Xcode). Verificado sem falhas no Apple clang 21 / macOS: a suíte completa em `release` e `asan` (ASan + UBSan), e as suítes de scheduler, render, denoiser e pipeline em `tsan`. O ASan pegou um bug real em um teste (referência a um temporário); já está corrigido.
 
 ## Limitações
 
@@ -161,7 +162,7 @@ A cobertura de linhas medida de `src/lumen` é 93,8% (cobertura de regiões 94,5
 - O GGX de espalhamento único perde energia conforme a rugosidade sobe: um metal branco com rugosidade 1 devolve 0,31 numa fornalha com incidência normal (medido na execução dos testes). Não há compensação de espalhamento múltiplo.
 - Sem vidro rugoso, volumes, subsurface, renderização espectral, motion blur, instanciamento, mapas de ambiente HDR ou amostragem por importância do céu.
 - O denoiser não tem estimativa de variância; a tolerância de cor é um parâmetro fixo.
-- O job de CI Linux/gcc 14 foi escrito mas não executado localmente (só havia Apple clang no macOS); os jobs de macOS espelham o que foi executado.
+- O job de CI Linux/gcc 14 foi escrito mas não executado (não há g++ na máquina de desenvolvimento e nenhuma imagem gcc foi baixada). O código só foi auditado por leitura quanto ao uso de APIs específicas do libc++; o libstdc++ 14 fornece tudo o que ele usa (`std::expected`, `std::from_chars`/`to_chars` de ponto flutuante, `std::span`, `std::bit_cast`), mas espere pequenos ajustes de portabilidade se esse job falhar. Os jobs de macOS espelham o que foi executado.
 
 ## Licença
 

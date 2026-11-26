@@ -179,6 +179,42 @@ private:
         }
     }
 
+    /// Copies one well-formed UTF-8 sequence (RFC 3629) starting at pos_, or fails. Rejects stray
+    /// continuation bytes, overlong forms, UTF-16 surrogates and code points above U+10FFFF.
+    void copy_utf8_sequence(std::string& out) {
+        const auto lead = static_cast<unsigned char>(text_[pos_]);
+        std::size_t length = 0;
+        unsigned char lo = 0x80;  // allowed range of the first continuation byte
+        unsigned char hi = 0xbf;
+        if (lead >= 0xc2 && lead <= 0xdf) {
+            length = 2;
+        } else if (lead >= 0xe0 && lead <= 0xef) {
+            length = 3;
+            if (lead == 0xe0) lo = 0xa0;  // excludes overlong 3-byte forms
+            if (lead == 0xed) hi = 0x9f;  // excludes surrogates U+D800..U+DFFF
+        } else if (lead >= 0xf0 && lead <= 0xf4) {
+            length = 4;
+            if (lead == 0xf0) lo = 0x90;  // excludes overlong 4-byte forms
+            if (lead == 0xf4) hi = 0x8f;  // excludes code points above U+10FFFF
+        } else {
+            fail("invalid UTF-8 in string");
+        }
+        if (pos_ + length > text_.size()) {
+            fail("truncated UTF-8 sequence in string");
+        }
+        for (std::size_t i = 1; i < length; ++i) {
+            const auto b = static_cast<unsigned char>(text_[pos_ + i]);
+            const unsigned char min = i == 1 ? lo : 0x80;
+            const unsigned char max = i == 1 ? hi : 0xbf;
+            if (b < min || b > max) {
+                pos_ += i;
+                fail("invalid UTF-8 in string");
+            }
+        }
+        out.append(text_.substr(pos_, length));
+        pos_ += length;
+    }
+
     std::string parse_string() {
         expect('"');
         std::string out;
@@ -195,7 +231,12 @@ private:
                 fail("control character in string");
             }
             if (c != '\\') {
-                out += c;
+                if (static_cast<unsigned char>(c) >= 0x80) {
+                    --pos_;
+                    copy_utf8_sequence(out);
+                } else {
+                    out += c;
+                }
                 continue;
             }
             if (at_end()) {

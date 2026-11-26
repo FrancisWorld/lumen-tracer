@@ -27,6 +27,7 @@ set(LUMEN_SUITES
     denoise
     tonemap
     loader
+    hardening
     pipeline)
 foreach(suite IN LISTS LUMEN_SUITES)
   add_test(NAME ${suite} COMMAND lumen_tests --suite ${suite})

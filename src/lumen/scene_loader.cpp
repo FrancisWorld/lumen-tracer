@@ -8,9 +8,12 @@
 #include <set>
 
 #include "lumen/error.hpp"
+#include "lumen/fileio.hpp"
 
 namespace lumen {
 namespace {
+
+constexpr double kMaxMagnitude = 1e9;
 
 /// Typed, strict access to one JSON object. Tracks which keys were read.
 class Fields {
@@ -91,10 +94,20 @@ public:
             if (!c.is_number()) {
                 fail(key + "[" + std::to_string(i) + "]", std::string("expected number but found ") + kind_name(c.kind()));
             }
-            out[i] = static_cast<Real>(c.as_number());
+            out[i] = static_cast<Real>(checked(c.as_number(), key + "[" + std::to_string(i) + "]"));
         }
         return out;
     }
+
+    /// Every number must survive conversion to single precision and leave headroom for squares and
+    /// cross products downstream, so |value| is capped at 1e9 (a finite double can still overflow a float, and edge cross products must stay finite).
+    double checked(double v, const std::string& key) const {
+        if (!(std::fabs(v) <= kMaxMagnitude)) {
+            fail(key, "magnitude must not exceed 1e9");
+        }
+        return v;
+    }
+
 
     /// Rejects keys that were never read.
     void finish() const {
@@ -110,7 +123,7 @@ private:
         if (!v.is_number()) {
             fail(key, std::string("expected number but found ") + kind_name(v.kind()));
         }
-        return v.as_number();
+        return checked(v.as_number(), key);
     }
 
     const Json* object_ = nullptr;
@@ -149,14 +162,6 @@ Vec3 non_negative_color(Fields& f, const std::string& key, const Vec3& fallback)
         f.fail(key, "colour components must not be negative");
     }
     return c;
-}
-
-std::string read_file(const std::filesystem::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        throw InputError("cannot open " + path.string());
-    }
-    return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 }
 
 class Builder {
@@ -269,7 +274,8 @@ private:
                     if (!r->is_array() || r->items().size() != 2 || !r->items()[0].is_number() || !r->items()[1].is_number()) {
                         f.fail("repeat", "expected an array of two numbers");
                     }
-                    repeat = {static_cast<Real>(r->items()[0].as_number()), static_cast<Real>(r->items()[1].as_number())};
+                    repeat = {static_cast<Real>(f.checked(r->items()[0].as_number(), "repeat[0]")),
+                              static_cast<Real>(f.checked(r->items()[1].as_number(), "repeat[1]"))};
                     if (!(repeat.x > 0 && repeat.y > 0)) {
                         f.fail("repeat", "components must be greater than zero");
                     }
@@ -429,7 +435,7 @@ private:
         const std::uint32_t material = material_of(scene, f);
         Vec3 scale(1);
         if (const Json* s = f.optional("scale")) {
-            scale = s->is_number() ? Vec3(static_cast<Real>(s->as_number())) : f.as_vec3(*s, "scale");
+            scale = s->is_number() ? Vec3(static_cast<Real>(f.checked(s->as_number(), "scale"))) : f.as_vec3(*s, "scale");
         }
         if (!(scale.x != 0 && scale.y != 0 && scale.z != 0)) {
             f.fail("scale", "must not be zero");
@@ -458,7 +464,7 @@ SceneDescription load_scene_file(const std::string& path) {
     const std::filesystem::path p(path);
     Json doc;
     try {
-        doc = parse_json(read_file(p));
+        doc = parse_json(read_file_bounded(p.string(), kMaxSceneBytes));
         return build_scene(doc, p.parent_path());
     } catch (const InputError& e) {
         throw InputError(p.filename().string() + ": " + e.what());

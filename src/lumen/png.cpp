@@ -1,10 +1,12 @@
 #include "lumen/png.hpp"
 
+#include "lumen/error.hpp"
+#include "lumen/fileio.hpp"
+
 #include <array>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <iterator>
 #include <stdexcept>
 
 namespace lumen {
@@ -221,12 +223,12 @@ void write_png_file(const std::string& path, const Image8& image) {
 }
 
 std::expected<Image8, std::string> read_png_file(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) {
-        return std::unexpected("cannot open " + path);
+    try {
+        const std::string text = read_file_bounded(path, kMaxAssetBytes);
+        return decode_png(std::span(reinterpret_cast<const std::uint8_t*>(text.data()), text.size()));
+    } catch (const InputError& e) {
+        return std::unexpected(std::string(e.what()));
     }
-    const Bytes bytes((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    return decode_png(bytes);
 }
 
 }  // namespace lumen

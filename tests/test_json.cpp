@@ -122,3 +122,49 @@ TEST_CASE(obj, rejects_bad_input_with_line_numbers) {
     CHECK(message("v 0 0 0\nf 1/x 1 1\n").find("bad face index") != std::string::npos);
     CHECK_THROWS(load_obj_file("/nonexistent/model.obj"));
 }
+
+namespace {
+std::string quoted(std::string_view raw_bytes) { return "\"" + std::string(raw_bytes) + "\""; }
+}  // namespace
+
+TEST_CASE(json, accepts_well_formed_utf8_of_every_length) {
+    for (const char* ok : {"\xc2\x80", "\xdf\xbf", "\xe0\xa0\x80", "\xe2\x82\xac", "\xed\x9f\xbf", "\xee\x80\x80", "\xef\xbf\xbf",
+                           "\xf0\x90\x80\x80", "\xf0\x9f\x98\x80", "\xf4\x8f\xbf\xbf", "caf\xc3\xa9 \xe6\x97\xa5\xe6\x9c\xac"}) {
+        CHECK_EQ(str(quoted(ok)), std::string(ok));
+    }
+}
+
+TEST_CASE(json, rejects_malformed_utf8) {
+    const struct {
+        const char* name;
+        std::string bytes;
+    } bad[] = {
+        {"lone continuation byte", "\x80"},
+        {"continuation after ascii", "a\xbf"},
+        {"overlong 2-byte NUL", "\xc0\x80"},
+        {"overlong 2-byte slash", "\xc1\xbf"},
+        {"overlong 3-byte", "\xe0\x80\x80"},
+        {"overlong 3-byte upper bound", "\xe0\x9f\xbf"},
+        {"overlong 4-byte", "\xf0\x80\x80\x80"},
+        {"overlong 4-byte upper bound", "\xf0\x8f\xbf\xbf"},
+        {"surrogate U+D800", "\xed\xa0\x80"},
+        {"surrogate U+DFFF", "\xed\xbf\xbf"},
+        {"above U+10FFFF", "\xf4\x90\x80\x80"},
+        {"lead byte F5", "\xf5\x80\x80\x80"},
+        {"lead byte FF", "\xff"},
+        {"truncated 2-byte", "\xc3"},
+        {"truncated 3-byte", "\xe2\x82"},
+        {"truncated 4-byte", "\xf0\x9f\x98"},
+        {"bad continuation", "\xe2\x28\xa1"},
+        {"bad second continuation", "\xe2\x82\x28"},
+    };
+    for (const auto& b : bad) {
+        const std::string message = error_of(quoted(b.bytes));
+        if (message.empty()) {
+            ::lumen::testing::report_failure(__FILE__, __LINE__, std::string("accepted: ") + b.name);
+        }
+    }
+    // The truncated case at end of input (no closing quote either) must not read out of bounds.
+    CHECK(!error_of("\"\xf0").empty());
+    CHECK(error_of(quoted("\xed\xa0\x80")).find("UTF-8") != std::string::npos);
+}

@@ -1,7 +1,11 @@
 #include <filesystem>
+#include <fstream>
+#include <limits>
 #include <string>
 
+#include "lumen/bvh.hpp"
 #include "lumen/denoise.hpp"
+#include "lumen/fileio.hpp"
 #include "lumen/scene_loader.hpp"
 #include "lumen/tonemap.hpp"
 #include "testing.hpp"
@@ -171,4 +175,83 @@ TEST_CASE(pipeline, scene_to_png_round_trip) {
         sum += v;
     }
     CHECK(sum > 48U * 27U * 3U * 10U);  // not a black frame
+}
+
+TEST_CASE(hardening, numbers_that_overflow_single_precision_are_rejected_with_a_path) {
+    const char* material = R"("materials": {"m": {}},)";
+    for (const char* value : {"1e300", "-1e300", "1e39", "3.5e38", "1e10"}) {
+        const std::string sphere_radius = std::string("{") + material + R"("objects": [{"type": "sphere", "center": [0,0,0], "radius": )" + value + R"(, "material": "m"}]})";
+        CHECK(mentions(error_of(sphere_radius.c_str()), "objects[0].radius: magnitude"));
+        const std::string center = std::string("{") + material + R"("objects": [{"type": "sphere", "center": [)" + value + R"(,0,0], "radius": 1, "material": "m"}]})";
+        CHECK(mentions(error_of(center.c_str()), "objects[0].center[0]: magnitude"));
+    }
+    CHECK(mentions(error_of(R"({"camera": {"from": [1e300, 0, 0]}})"), "camera.from[0]: magnitude"));
+    CHECK(mentions(error_of(R"({"settings": {"exposure": 1e300}})"), "settings.exposure: magnitude"));
+    CHECK(mentions(error_of(R"({"materials": {"m": {"emission": [1e39, 0, 0]}}})"), "magnitude"));
+    CHECK(mentions(error_of(R"({"materials": {"m": {}}, "objects": [{"type": "mesh", "path": "../assets/models/rock.obj", "material": "m", "scale": 1e300}]})"),
+                   "objects[0].scale: magnitude"));
+    // The largest accepted values still produce a usable scene.
+    CHECK(error_of(R"({"materials": {"m": {}}, "objects": [{"type": "sphere", "center": [1e9,0,0], "radius": 1e9, "material": "m"}]})").empty());
+}
+
+TEST_CASE(hardening, scene_rejects_non_finite_geometry_before_building_the_bvh) {
+    Scene scene;
+    const auto tex = scene.add_texture(ConstantTexture{Vec3(1)});
+    Material m;
+    m.base_texture = tex;
+    const auto mat = scene.add_material(m);
+    const Real nan = std::numeric_limits<Real>::quiet_NaN();
+    CHECK_THROWS(scene.add_sphere({{kInf, 0, 0}, 1, mat}));
+    CHECK_THROWS(scene.add_sphere({{nan, 0, 0}, 1, mat}));
+    CHECK_THROWS(scene.add_sphere({{0, 0, 0}, kInf, mat}));
+    CHECK_THROWS(scene.add_sphere({{0, 0, 0}, 3e38F, mat}));
+    Triangle t;
+    t.p0 = {0, 0, 0};
+    t.p1 = {1, 0, 0};
+    t.p2 = {0, nan, 0};
+    t.material = mat;
+    CHECK_THROWS(scene.add_triangle(t));
+    t.p2 = {0, 1e30F, 0};
+    CHECK_THROWS(scene.add_triangle(t));
+
+    // OBJ values that fit a float but overflow once scaled.
+    const ObjMesh huge = parse_obj("v 3e38 0 0\nv 0 3e38 0\nv 0 0 3e38\nf 1 2 3\n");
+    CHECK_THROWS(scene.add_mesh(huge, Transform::from_trs({}, {}, {10, 10, 10}), mat, true));
+    CHECK_THROWS(scene.add_mesh(huge, Transform::from_trs({}, {}, {1, 1, 1}), mat, true));
+    CHECK_EQ(scene.primitive_count(), 0U);  // nothing half-added
+    scene.build();  // an empty scene still builds
+}
+
+TEST_CASE(hardening, bvh_refuses_boxes_that_would_poison_the_bin_computation) {
+    const Real nan = std::numeric_limits<Real>::quiet_NaN();
+    CHECK_THROWS(Bvh::build(std::vector<Aabb>{{{0, 0, 0}, {1, 1, 1}}, {{nan, 0, 0}, {1, 1, 1}}}));
+    CHECK_THROWS(Bvh::build(std::vector<Aabb>{{{0, 0, 0}, {1, 1, 1}}, {{-kInf, 0, 0}, {1, 1, 1}}}));
+    CHECK_THROWS(Bvh::build(std::vector<Aabb>{Aabb{}}));  // default (empty, inverted) box
+    CHECK_THROWS(Bvh::build(std::vector<Aabb>{{{-3e38F, 0, 0}, {3e38F, 1, 1}}}));  // extent overflows
+}
+
+TEST_CASE(hardening, oversized_files_are_refused_before_they_are_read) {
+    const auto dir = std::filesystem::temp_directory_path();
+    const auto path = dir / "lumen_oversized_scene.json";
+    {
+        std::ofstream create(path, std::ios::binary);
+        create << "{}";
+    }
+    // A sparse file: 65 MiB of apparent size that costs (almost) no disk and must never be loaded.
+    std::filesystem::resize_file(path, std::uintmax_t{65} << 20);
+    std::string message;
+    try {
+        (void)load_scene_file(path.string());
+    } catch (const InputError& e) {
+        message = e.what();
+    }
+    std::filesystem::remove(path);
+    CHECK(mentions(message, "file too large"));
+    CHECK(mentions(message, "lumen_oversized_scene.json"));
+
+    // The bounded reader enforces its limit exactly, and also when the size can't be queried up front.
+    CHECK_EQ(read_file_bounded((kRoot / "scenes" / "knot-study.json").string(), 1 << 20).empty(), false);
+    CHECK_THROWS(read_file_bounded((kRoot / "scenes" / "knot-study.json").string(), 100));
+    CHECK_THROWS(read_file_bounded("/dev/zero", 4096));
+    CHECK_THROWS(read_file_bounded("/nonexistent/file", 4096));
 }
